@@ -1,0 +1,6 @@
+google-genai
+pymongo
+pyautogui
+pillow
+streamlit
+python-dotenv
