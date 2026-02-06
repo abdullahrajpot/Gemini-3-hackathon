@@ -6,6 +6,7 @@ import pyautogui
 from google import genai
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import psutil
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +19,28 @@ COLLECTION_NAME = os.getenv("MONGODB_COLLECTION", "Memories")
 CAPTURE_INTERVAL = int(os.getenv("CAPTURE_INTERVAL", 60))
 STORAGE_PATH = os.getenv("SCREENSHOT_STORAGE_PATH", "./storage")
 
+# Privacy-sensitive apps and windows to skip
+SENSITIVE_KEYWORDS = [
+    # Banking & Finance
+    'bank', 'banking', 'paypal', 'venmo', 'stripe', 'payment',
+    'credit card', 'debit card', 'wallet', 'crypto', 'coinbase',
+    'binance', 'trading', 'investment',
+    
+    # Password Managers & Security
+    'password', '1password', 'lastpass', 'bitwarden', 'keepass',
+    'dashlane', 'nordpass', 'authenticator', '2fa', 'otp',
+    
+    # Private Browsing
+    'incognito', 'private', 'inprivate',
+    
+    # Sensitive Apps
+    'vpn', 'tor browser', 'signal', 'telegram secret',
+    
+    # Personal
+    'medical', 'health', 'doctor', 'prescription',
+    'tax', 'irs', 'social security'
+]
+
 # Setup storage directory
 Path(STORAGE_PATH).mkdir(exist_ok=True)
 
@@ -27,9 +50,48 @@ db_client = MongoClient(MONGODB_URI)
 db = db_client[DB_NAME]
 collection = db[COLLECTION_NAME]
 
+def get_active_window_title():
+    """Get the title of the currently active window"""
+    try:
+        import win32gui
+        window = win32gui.GetForegroundWindow()
+        title = win32gui.GetWindowText(window)
+        return title.lower()
+    except:
+        # Fallback method using psutil
+        try:
+            for proc in psutil.process_iter(['name', 'pid']):
+                try:
+                    # Get process name
+                    proc_name = proc.info['name'].lower()
+                    return proc_name
+                except:
+                    continue
+        except:
+            pass
+    return ""
+
+def is_sensitive_content(window_title):
+    """Check if current window contains sensitive content"""
+    window_title_lower = window_title.lower()
+    
+    for keyword in SENSITIVE_KEYWORDS:
+        if keyword in window_title_lower:
+            return True, keyword
+    
+    return False, None
+
 def save_memory():
     """Capture screenshot, analyze with Gemini, and store in MongoDB"""
     try:
+        # Check active window for sensitive content
+        window_title = get_active_window_title()
+        is_sensitive, matched_keyword = is_sensitive_content(window_title)
+        
+        if is_sensitive:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ⏭️  Skipped - Sensitive content detected: '{matched_keyword}'")
+            return
+        
         # 1. Capture screenshot
         timestamp = int(time.time())
         img_path = os.path.join(STORAGE_PATH, f"mem_{timestamp}.jpg")
@@ -54,11 +116,12 @@ def save_memory():
             "timestamp": datetime.utcnow(),
             "summary": response.text,
             "image_path": img_path,
-            "captured_at": timestamp
+            "captured_at": timestamp,
+            "window_title": window_title
         }
         collection.insert_one(memory)
         
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Memory captured and stored.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ Memory captured and stored.")
         print(f"Summary: {response.text[:100]}...")
         
     except Exception as e:
@@ -66,8 +129,19 @@ def save_memory():
 
 def main():
     """Main loop to continuously capture memories"""
-    print("ChronoVision Collector started...")
-    print(f"Capturing every {CAPTURE_INTERVAL} seconds")
+    print("=" * 60)
+    print("  ChronoVision Collector - Privacy Protected")
+    print("=" * 60)
+    print(f"📸 Capturing every {CAPTURE_INTERVAL} seconds")
+    print(f"🔒 Privacy mode: ON")
+    print(f"🛡️  Skipping sensitive content automatically")
+    print(f"\n⏭️  Will skip windows containing:")
+    print(f"   - Banking & payment apps")
+    print(f"   - Password managers")
+    print(f"   - Private/Incognito browsing")
+    print(f"   - Medical & tax information")
+    print("=" * 60)
+    print()
     
     while True:
         save_memory()
