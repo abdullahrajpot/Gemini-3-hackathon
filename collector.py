@@ -37,14 +37,17 @@ def save_memory():
         img.save(img_path)
         
         # 2. Analyze with Gemini Vision
-        with open(img_path, "rb") as f:
-            response = client_ai.models.generate_content(
-                model="gemini-3-pro-preview",
-                contents=[
-                    "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible.",
-                    f.read()
-                ]
-            )
+        # Upload the file first
+        uploaded_file = client_ai.files.upload(file=img_path)
+        
+        # Generate content with the uploaded file
+        response = client_ai.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible.",
+                uploaded_file
+            ]
+        )
         
         # 3. Store in MongoDB
         memory = {
@@ -56,6 +59,7 @@ def save_memory():
         collection.insert_one(memory)
         
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Memory captured and stored.")
+        print(f"Summary: {response.text[:100]}...")
         
     except Exception as e:
         print(f"Error capturing memory: {e}")
