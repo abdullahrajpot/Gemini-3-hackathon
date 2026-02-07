@@ -24,21 +24,25 @@ SENSITIVE_KEYWORDS = [
     # Banking & Finance
     'bank', 'banking', 'paypal', 'venmo', 'stripe', 'payment',
     'credit card', 'debit card', 'wallet', 'crypto', 'coinbase',
-    'binance', 'trading', 'investment',
+    'binance', 'trading', 'investment', 'account balance',
     
     # Password Managers & Security
     'password', '1password', 'lastpass', 'bitwarden', 'keepass',
     'dashlane', 'nordpass', 'authenticator', '2fa', 'otp',
+    'sign in', 'log in', 'login', 'signin', 'sign-in',
+    'enter password', 'password required', 'credentials',
     
     # Private Browsing
-    'incognito', 'private', 'inprivate',
+    'incognito', 'private', 'inprivate', 'private browsing',
     
     # Sensitive Apps
     'vpn', 'tor browser', 'signal', 'telegram secret',
     
-    # Personal
+    # Personal & Authentication
     'medical', 'health', 'doctor', 'prescription',
-    'tax', 'irs', 'social security'
+    'tax', 'irs', 'social security', 'ssn',
+    'authentication', 'verify', 'security code',
+    'unlock', 'passcode', 'pin code'
 ]
 
 # Setup storage directory
@@ -54,15 +58,29 @@ def get_active_window_title():
     """Get the title of the currently active window"""
     try:
         import win32gui
-        window = win32gui.GetForegroundWindow()
-        title = win32gui.GetWindowText(window)
-        return title.lower()
-    except:
-        # Fallback method using psutil
+        import win32process
+        
+        # Get foreground window
+        hwnd = win32gui.GetForegroundWindow()
+        
+        # Get window title
+        title = win32gui.GetWindowText(hwnd)
+        
+        # Get process ID
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        
+        # Get process name
         try:
-            for proc in psutil.process_iter(['name', 'pid']):
+            process = psutil.Process(pid)
+            process_name = process.name()
+            return f"{title} {process_name}".lower()
+        except:
+            return title.lower()
+    except Exception as e:
+        # Fallback: try to get any active process
+        try:
+            for proc in psutil.process_iter(['name', 'exe']):
                 try:
-                    # Get process name
                     proc_name = proc.info['name'].lower()
                     return proc_name
                 except:
@@ -75,9 +93,22 @@ def is_sensitive_content(window_title):
     """Check if current window contains sensitive content"""
     window_title_lower = window_title.lower()
     
+    # Check each keyword
     for keyword in SENSITIVE_KEYWORDS:
         if keyword in window_title_lower:
             return True, keyword
+    
+    # Additional checks for common patterns
+    sensitive_patterns = [
+        'sign in', 'log in', 'login', 'signin',
+        'enter password', 'password required',
+        'authentication', 'verify', 'security',
+        'account', 'credentials'
+    ]
+    
+    for pattern in sensitive_patterns:
+        if pattern in window_title_lower:
+            return True, pattern
     
     return False, None
 
@@ -89,20 +120,38 @@ def save_memory():
         is_sensitive, matched_keyword = is_sensitive_content(window_title)
         
         if is_sensitive:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ⏭️  Skipped - Sensitive content detected: '{matched_keyword}'")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔒 SKIPPED - Sensitive: '{matched_keyword}' in '{window_title[:50]}'")
             return
         
         # 1. Capture screenshot
         timestamp = int(time.time())
         img_path = os.path.join(STORAGE_PATH, f"mem_{timestamp}.jpg")
         img = pyautogui.screenshot()
+        
+        # Quick OCR check for sensitive text in screenshot (optional but recommended)
+        # This adds an extra layer of protection
+        try:
+            import pytesseract
+            from PIL import Image
+            
+            # Sample a small portion of the image for quick text detection
+            sample = img.crop((img.width//4, img.height//4, 3*img.width//4, 3*img.height//4))
+            text = pytesseract.image_to_string(sample).lower()
+            
+            # Check for sensitive keywords in the image text
+            for keyword in ['password', 'login', 'sign in', 'credit card', 'ssn', 'social security']:
+                if keyword in text:
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔒 SKIPPED - Detected '{keyword}' in screenshot")
+                    return
+        except:
+            # If OCR fails, continue without it
+            pass
+        
         img.save(img_path)
         
         # 2. Analyze with Gemini Vision
-        # Upload the file first
         uploaded_file = client_ai.files.upload(file=img_path)
         
-        # Generate content with the uploaded file
         response = client_ai.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
@@ -121,8 +170,9 @@ def save_memory():
         }
         collection.insert_one(memory)
         
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ Memory captured and stored.")
-        print(f"Summary: {response.text[:100]}...")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ Memory captured")
+        print(f"   Window: {window_title[:60]}")
+        print(f"   Summary: {response.text[:80]}...")
         
     except Exception as e:
         print(f"Error capturing memory: {e}")
