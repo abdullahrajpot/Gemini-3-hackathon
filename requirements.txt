@@ -1,8 +1,8 @@
 google-genai
 pymongo
-pyautogui
+pyautogui; sys_platform == 'win32'
 pillow
 streamlit
 python-dotenv
 psutil
-pywin32
+pywin32; sys_platform == 'win32'
