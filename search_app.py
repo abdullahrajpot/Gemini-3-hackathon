@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 from google import genai
 import subprocess
 import sys
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 # Load environment variables
 load_dotenv()
@@ -314,18 +317,6 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
-
-# -----------------------------------------------------------------------------
-# LOGIC
-# -----------------------------------------------------------------------------
-
-import sys
-try:
-    import psutil
-except ImportError:
-    psutil = None
-
-# ... (rest of imports)
 
 # -----------------------------------------------------------------------------
 # LOGIC
