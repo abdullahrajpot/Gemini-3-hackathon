@@ -195,15 +195,24 @@ def save_memory():
         
         # 3. Store in MongoDB
         try:
+            # Encode image to base64 for cloud retrieval
+            import base64
+            from io import BytesIO
+            
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG", quality=70) # Compress slightly
+            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            
             memory = {
                 "timestamp": datetime.utcnow(),
                 "summary": response.text,
                 "image_path": img_path,
+                "image_data": img_str, # Store base64 data
                 "captured_at": timestamp,
                 "window_title": window_title
             }
             collection.insert_one(memory)
-            logging.info(f"✅ Memory captured and stored. Window: {window_title[:60]}")
+            logging.info(f"✅ Memory captured and stored (with Base64). Window: {window_title[:60]}")
         except Exception as e:
             logging.error(f"MongoDB Error: {e}")
 

@@ -21,10 +21,30 @@ COLLECTION_NAME = os.getenv("MONGODB_COLLECTION", "Memories")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Initialize clients
-db_client = MongoClient(MONGODB_URI)
-db = db_client[DB_NAME]
-collection = db[COLLECTION_NAME]
-client_ai = genai.Client(api_key=GEMINI_API_KEY)
+# Initialize clients
+try:
+    if not MONGODB_URI:
+        st.error("MONGODB_CONNECTION_STRING not found in environment variables.")
+        st.stop()
+        
+    db_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000) # 5s timeout
+    db = db_client[DB_NAME]
+    collection = db[COLLECTION_NAME]
+    
+    # Test connection
+    db_client.server_info()
+except Exception as e:
+    st.error(f"❌ MongoDB Connection Failed: {e}")
+    st.info("💡 **Solution:** Go to MongoDB Atlas > Network Access > Add IP Address > Allow Access from Anywhere (0.0.0.0/0). This is required for Streamlit Cloud.")
+    st.stop()
+# Initialize clients
+try:
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
+    client_ai = genai.Client(api_key=GEMINI_API_KEY)
+except Exception as e:
+    st.error(f"Failed to initialize Gemini Client: {e}. Check your Secrets/Environment Variables.")
+    client_ai = None
 
 # Page Configuration
 st.set_page_config(
@@ -409,7 +429,8 @@ with st.sidebar:
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("TERMINATE PROCESS", use_container_width=True):
+        # Action Button
+        if st.button("⏹ STOP SCAN", use_container_width=True, type="primary"):
             stop_collector()
             st.rerun()
     else:
@@ -508,7 +529,7 @@ if page == "Command Center":
     
     st.markdown("### ⚡ RECENT CAPTURE STREAM")
     
-    if last_memory and os.path.exists(last_memory.get('image_path', '')):
+    if last_memory and (last_memory.get('image_data') or os.path.exists(last_memory.get('image_path', ''))):
         # Display the image in a styled container
         st.markdown(f"""
         <div style="background: #0F0F16; border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; margin-top: 10px;">
@@ -517,7 +538,10 @@ if page == "Command Center":
             </div>
         </div>
         """, unsafe_allow_html=True)
-        st.image(last_memory['image_path'], use_container_width=True)
+        if last_memory.get("image_data"):
+             st.image(f"data:image/jpeg;base64,{last_memory['image_data']}", use_container_width=True)
+        elif os.path.exists(last_memory['image_path']):
+             st.image(last_memory['image_path'], use_container_width=True)
         st.caption(last_memory['summary'])
     else:
         st.markdown("""
@@ -639,21 +663,34 @@ elif page == "Intelligence":
              Answer functionality based on the context provided."""
              
              try:
-                response = client_ai.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-                
-                st.markdown(f"""
-                <div style="background: #0F0F16; border: 1px solid #2E5CFF; border-radius: 12px; padding: 20px; margin-top: 20px;">
-                    <div style="display: flex; align-items: start; gap: 12px;">
-                        <div style="font-size: 1.5rem;">🤖</div>
-                        <div style="line-height: 1.6; color: #E2E8F0;">
-                            {response.text}
+                if client_ai:
+                    response = client_ai.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt
+                    )
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(88, 101, 242, 0.1); border: 1px solid #5865F2; border-radius: 12px; padding: 20px; margin-top: 20px;">
+                        <div style="display: flex; gap: 12px;">
+                            <div style="font-size: 1.5rem;">🤖</div>
+                            <div style="line-height: 1.6; color: #E2E8F0;">
+                                {response.text}
+                            </div>
                         </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
+                    """, unsafe_allow_html=True)
+
+                    # Image display for relevant documents
+                    for item in relevant_docs:
+                        if item.get("image_data"):
+                            st.image(f"data:image/jpeg;base64,{item['image_data']}", use_container_width=True)
+                        elif item.get('image_path') and os.path.exists(item['image_path']):
+                            st.image(item['image_path'], use_container_width=True)
+                        elif item.get('image_path'): # If image_path exists but file doesn't (e.g., cloud mode)
+                            st.warning(f"Image not found (cloud mode): {os.path.basename(item['image_path'])}")
+
+                else:
+                    st.warning("⚠️ AI features are unavailable. Please check your GEMINI_API_KEY in Streamlit Cloud secrets.")
+
              except Exception as e:
                  st.error(f"Intelligence Module Error: {e}")
