@@ -7,9 +7,19 @@ from google import genai
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import psutil
+import logging
+import sys
 
 # Load environment variables
 load_dotenv()
+
+# Setup logging
+logging.basicConfig(
+    filename='collector.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    encoding='utf-8'
+)
 
 # Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -49,10 +59,15 @@ SENSITIVE_KEYWORDS = [
 Path(STORAGE_PATH).mkdir(exist_ok=True)
 
 # Initialize clients
-client_ai = genai.Client(api_key=GEMINI_API_KEY)
-db_client = MongoClient(MONGODB_URI)
-db = db_client[DB_NAME]
-collection = db[COLLECTION_NAME]
+try:
+    client_ai = genai.Client(api_key=GEMINI_API_KEY)
+    db_client = MongoClient(MONGODB_URI)
+    db = db_client[DB_NAME]
+    collection = db[COLLECTION_NAME]
+    logging.info("Clients initialized successfully.")
+except Exception as e:
+    logging.error(f"Failed to initialize clients: {e}")
+    sys.exit(1)
 
 def get_active_window_title():
     """Get the title of the currently active window"""
@@ -77,6 +92,7 @@ def get_active_window_title():
         except:
             return title.lower()
     except Exception as e:
+        logging.warning(f"Error getting window title with win32gui: {e}")
         # Fallback: try to get any active process
         try:
             for proc in psutil.process_iter(['name', 'exe']):
@@ -115,18 +131,26 @@ def is_sensitive_content(window_title):
 def save_memory():
     """Capture screenshot, analyze with Gemini, and store in MongoDB"""
     try:
+        logging.info("Attempting used to capture memory...")
         # Check active window for sensitive content
         window_title = get_active_window_title()
         is_sensitive, matched_keyword = is_sensitive_content(window_title)
         
         if is_sensitive:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔒 SKIPPED - Sensitive: '{matched_keyword}' in '{window_title[:50]}'")
+            logging.info(f"🔒 SKIPPED - Sensitive: '{matched_keyword}' in '{window_title[:50]}'")
             return
         
         # 1. Capture screenshot
         timestamp = int(time.time())
         img_path = os.path.join(STORAGE_PATH, f"mem_{timestamp}.jpg")
-        img = pyautogui.screenshot()
+        
+        try:
+            img = pyautogui.screenshot()
+            img.save(img_path)
+            logging.info(f"Screenshot saved to {img_path}")
+        except Exception as e:
+             logging.error(f"Screenshot failed: {e}")
+             return
         
         # Quick OCR check for sensitive text in screenshot (optional but recommended)
         # This adds an extra layer of protection
@@ -141,57 +165,57 @@ def save_memory():
             # Check for sensitive keywords in the image text
             for keyword in ['password', 'login', 'sign in', 'credit card', 'ssn', 'social security']:
                 if keyword in text:
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔒 SKIPPED - Detected '{keyword}' in screenshot")
+                    logging.info(f"🔒 SKIPPED - Detected '{keyword}' in screenshot via OCR")
+                    try:
+                        os.remove(img_path)
+                    except:
+                        pass
                     return
-        except:
-            # If OCR fails, continue without it
-            pass
-        
-        img.save(img_path)
+        except ImportError:
+            pass # OCR skipped
+        except Exception as e:
+            logging.warning(f"OCR check failed: {e}")
         
         # 2. Analyze with Gemini Vision
-        uploaded_file = client_ai.files.upload(file=img_path)
-        
-        response = client_ai.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible.",
-                uploaded_file
-            ]
-        )
+        try:
+            uploaded_file = client_ai.files.upload(file=img_path)
+            logging.info("Image uploaded to Gemini.")
+            
+            response = client_ai.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible.",
+                    uploaded_file
+                ]
+            )
+            logging.info("Gemini analysis complete.")
+        except Exception as e:
+            logging.error(f"Gemini API Error: {e}")
+            return
         
         # 3. Store in MongoDB
-        memory = {
-            "timestamp": datetime.utcnow(),
-            "summary": response.text,
-            "image_path": img_path,
-            "captured_at": timestamp,
-            "window_title": window_title
-        }
-        collection.insert_one(memory)
-        
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ Memory captured")
-        print(f"   Window: {window_title[:60]}")
-        print(f"   Summary: {response.text[:80]}...")
-        
+        try:
+            memory = {
+                "timestamp": datetime.utcnow(),
+                "summary": response.text,
+                "image_path": img_path,
+                "captured_at": timestamp,
+                "window_title": window_title
+            }
+            collection.insert_one(memory)
+            logging.info(f"✅ Memory captured and stored. Window: {window_title[:60]}")
+        except Exception as e:
+            logging.error(f"MongoDB Error: {e}")
+
     except Exception as e:
-        print(f"Error capturing memory: {e}")
+        logging.error(f"Unexpected error in save_memory: {e}")
 
 def main():
     """Main loop to continuously capture memories"""
-    print("=" * 60)
-    print("  ChronoVision Collector - Privacy Protected")
-    print("=" * 60)
-    print(f"📸 Capturing every {CAPTURE_INTERVAL} seconds")
-    print(f"🔒 Privacy mode: ON")
-    print(f"🛡️  Skipping sensitive content automatically")
-    print(f"\n⏭️  Will skip windows containing:")
-    print(f"   - Banking & payment apps")
-    print(f"   - Password managers")
-    print(f"   - Private/Incognito browsing")
-    print(f"   - Medical & tax information")
-    print("=" * 60)
-    print()
+    logging.info("=" * 60)
+    logging.info("  ChronoVision Collector - Started")
+    logging.info("=" * 60)
+    logging.info(f"📸 Capturing every {CAPTURE_INTERVAL} seconds")
     
     while True:
         save_memory()

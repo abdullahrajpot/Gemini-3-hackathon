@@ -1,0 +1,2 @@
+c:\Users\Sabri laptop\Documents\Desktop\Documents\ASSIGNMENT\Hackathons\gemini 3 hackathon\collector.py:199: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "timestamp": datetime.utcnow(),

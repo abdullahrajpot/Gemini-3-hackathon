@@ -7,7 +7,6 @@ from google import genai
 import subprocess
 import sys
 import psutil
-from collections import Counter
 
 # Load environment variables
 load_dotenv()
@@ -26,273 +25,300 @@ client_ai = genai.Client(api_key=GEMINI_API_KEY)
 
 # Page Configuration
 st.set_page_config(
-    page_title="ChronoVision AI - Your Digital Memory",
+    page_title="CHRONICLE V3.0 PRO",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Advanced Glassmorphism CSS
+# -----------------------------------------------------------------------------
+# CSS STYLING (Chronicle V3.0 Pro Theme)
+# -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
     :root {
-        --bg-color: #0E1117;
-        --card-bg: rgba(30, 41, 59, 0.7);
-        --primary: #00F0FF;
-        --secondary: #7C3AED;
+        --bg-dark: #05050A;
+        --card-bg: #0F0F16;
+        --accent-blue: #2E5CFF;
+        --accent-purple: #7C3AED;
         --text-primary: #FFFFFF;
-        --text-secondary: #E2E8F0;
-        --accent-glow: 0 0 20px rgba(0, 240, 255, 0.15);
-    }
-    
-    /* Global Reset & Typography */
-    * {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        color: var(--text-primary);
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Space Grotesk', sans-serif;
-        letter-spacing: -0.02em;
-        color: #FFFFFF !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    }
-    
-    p, span, div, label, li {
-        color: var(--text-primary);
-    }
-    
-    code, pre {
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    /* Main App Background */
-    .stApp {
-        background-color: var(--bg-color);
-        background-image: 
-            radial-gradient(circle at 10% 20%, rgba(124, 58, 237, 0.1) 0%, transparent 40%),
-            radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.1) 0%, transparent 40%);
-    }
-    
-    /* Hide Streamlit Default Elements */
-    #MainMenu, footer, header {visibility: hidden;}
-    
-    /* Container Adjustments */
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 5rem !important;
-        max-width: 1200px;
-    }
-    
-    /* Glass Morphism Base */
-    .glass-panel {
-        background: var(--card-bg);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        --text-secondary: #94A3B8;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --neon-glow: 0 0 10px rgba(46, 92, 255, 0.3);
     }
 
-    /* Hero Section */
-    .hero-container {
-        text-align: center;
-        padding: 4rem 1rem;
-        margin-bottom: 3rem;
-        position: relative;
+    /* Global Reset */
+    .stApp {
+        background-color: var(--bg-dark);
+        color: var(--text-primary);
     }
     
-    .hero-title {
-        font-size: 4rem;
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h1, h2, h3, .stMetricLabel {
+        font-family: 'Inter', sans-serif;
         font-weight: 700;
-        background: linear-gradient(135deg, #FFF 0%, #94A3B8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        letter-spacing: -0.5px;
+        color: white !important;
     }
     
-    .hero-subtitle {
-        font-size: 1.25rem;
-        color: #CBD5E1;
-        font-weight: 400;
-        max-width: 600px;
-        margin: 0 auto;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    
-    /* Stats Cards - Compact */
-    .stat-card-compact {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 1rem;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-    
-    .stat-card-compact:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.1);
-        transform: translateY(-2px);
-    }
-    
-    .stat-value {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: var(--primary);
-        line-height: 1.2;
-    }
-    
-    .stat-label {
-        font-size: 0.8rem;
-        color: #E2E8F0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-weight: 600;
-    }
-    
-    /* Memory Cards */
-    .memory-card {
-        background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.6) 100%);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .memory-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 4px; height: 100%;
-        background: var(--primary);
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    
-    .memory-card:hover {
-        transform: translateY(-4px) scale(1.01);
-        border-color: rgba(0, 240, 255, 0.3);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-    }
-    
-    .memory-card:hover::before {
-        opacity: 1;
-    }
-    
-    .memory-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    
-    .memory-time {
+    .data-font {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.85rem;
-        color: var(--primary);
-        background: rgba(0, 240, 255, 0.1);
-        padding: 4px 8px;
-        border-radius: 4px;
     }
-    
-    .memory-ago {
-        font-size: 0.8rem;
-        color: #CBD5E1;
-        font-weight: 500;
-    }
-    
-    .memory-content {
-        color: #FFFFFF;
-        font-size: 1.05rem;
-        line-height: 1.6;
-        font-weight: 400;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    }
+
+    /* Hide Streamlit Elements */
+    #MainMenu, footer, header {visibility: hidden;}
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #0b0f15;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background-color: #08080E;
+        border-right: 1px solid var(--border-color);
+    }
+    
+    section[data-testid="stSidebar"] hr {
+        border-color: var(--border-color);
     }
 
-    section[data-testid="stSidebar"] * {
-        color: #E2E8F0 !important;
+    /* Navigation Radio (Sidebar) */
+    .stRadio [role="radiogroup"] {
+        background: transparent;
+        padding: 0;
     }
     
-    section[data-testid="stSidebar"] h1, 
-    section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3 {
-        color: #FFFFFF !important;
-    }
-    
-    /* Status Indicator */
-    .status-indicator {
+    .stRadio label {
+        background: transparent !important;
+        border: 1px solid transparent;
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: #64748B !important;
+        transition: all 0.2s;
+        font-weight: 600;
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        margin-bottom: 20px;
+        margin-bottom: 4px;
     }
     
-    .status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        box-shadow: 0 0 10px currentColor;
+    .stRadio label:hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: white !important;
     }
     
-    /* Input Fields */
-    .stTextInput input {
-        background: rgba(15, 23, 42, 0.95) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        color: #FFFFFF !important;
-        padding: 1.2rem !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        caret-color: var(--primary) !important;
+    div[data-testid="stMarkdownContainer"] p {
+        font-size: 0.95rem;
+    }
+
+    /* Cards */
+    .dashboard-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        height: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
     
-    .stTextInput input::placeholder {
-        color: #94A3B8 !important;
-        opacity: 0.8 !important;
+    .dashboard-card:hover {
+        border-color: rgba(46, 92, 255, 0.3);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
     
-    .stTextInput input:focus {
-        border-color: var(--primary) !important;
-        box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1) !important;
+    .card-label {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
+    .card-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+        line-height: 1.1;
+    }
+    
+    .card-sub {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 8px;
+    }
+
     /* Buttons */
     .stButton button {
-        background: linear-gradient(90deg, #2563EB 0%, #7C3AED 100%);
-        border: none;
+        background: var(--accent-blue);
         color: white;
-        padding: 0.6rem 1.5rem;
+        border: none;
         border-radius: 8px;
         font-weight: 600;
+        padding: 0.5rem 1.5rem;
+        box-shadow: 0 0 15px rgba(46, 92, 255, 0.2);
         transition: all 0.2s;
     }
     
     .stButton button:hover {
-        opacity: 0.9;
+        box-shadow: 0 0 25px rgba(46, 92, 255, 0.4);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
     }
+    
+    .stButton button:active {
+        background: #1a45d0;
+    }
+
+    /* Inputs */
+    .stTextInput input {
+        background-color: #0F0F16 !important;
+        border: 1px solid var(--border-color) !important;
+        color: white !important;
+        border-radius: 12px !important;
+        padding: 1.2rem !important;
+    }
+    
+    .stTextInput input:focus {
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 1px var(--accent-blue) !important;
+    }
+
+    /* Timeline Items */
+    .timeline-row {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        transition: border-color 0.2s;
+    }
+    
+    .timeline-row:hover {
+        border-color: rgba(255,255,255,0.2);
+    }
+    
+    .time-badge {
+        font-family: 'JetBrains Mono', monospace;
+        background: rgba(46, 92, 255, 0.1);
+        color: #5C85FF;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* Status Indicators */
+    .status-dot {
+        height: 8px; 
+        width: 8px; 
+        border-radius: 50%; 
+        display: inline-block;
+        margin-right: 6px;
+    }
+    .dot-green { background: #10B981; box-shadow: 0 0 8px #10B981; }
+    .dot-red { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
+    .dot-grey { background: #64748B; }
+
+    /* Header Bar */
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .app-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .brand-logo {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-blue);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    
+    .brand-text h3 {
+        margin: 0;
+        line-height: 1.2;
+        font-size: 1.2rem;
+    }
+    
+    .brand-text span {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+
+    /* Tabs Override */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        background-color: transparent;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: auto;
+        white-space: nowrap;
+        background-color: transparent;
+        border-radius: 4px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        padding: 4px 0;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: white !important;
+        border-bottom: 2px solid var(--accent-blue) !important;
+    }
+    
+    /* Selectbox Styling */
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="input"] > div {
+        background-color: #0F0F16 !important;
+        border: 1px solid var(--border-color) !important;
+        color: white !important;
+        border-radius: 8px !important;
+    }
+    
+    div[data-baseweb="select"] span {
+        color: white !important;
+    }
+    
+    div[data-baseweb="menu"] {
+        background-color: #1E293B !important;
+    }
+    
+    div[data-baseweb="menu"] li {
+        color: white !important;
+    }
+    
+    div[data-baseweb="menu"] li:hover {
+        background-color: var(--accent-blue) !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
-# Helper functions
+# -----------------------------------------------------------------------------
+# LOGIC
+# -----------------------------------------------------------------------------
+
 def is_collector_running():
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
@@ -336,217 +362,284 @@ def stop_collector():
         st.error(f"Error: {e}")
         return False
 
-# Hero Header
-st.markdown("""
-<div class="hero-container">
-    <h1 class="hero-title">ChronoVision</h1>
-    <p class="hero-subtitle">Intelligent Memory Augmentation • <span style="color:var(--primary)">System Active</span></p>
-</div>
-""", unsafe_allow_html=True)
+# -----------------------------------------------------------------------------
+# LAYOUT
+# -----------------------------------------------------------------------------
 
-# Sidebar Controls
-st.sidebar.markdown("## 🎛️ System Control")
-collector_status = is_collector_running()
-
-if collector_status:
-    st.sidebar.markdown("""
-    <div class="status-indicator">
-        <div class="status-dot" style="color:#00F0FF; box-shadow: 0 0 10px #00F0FF;"></div>
-        <div>
-            <div style="font-weight:600; color:white;">System Online</div>
-            <div style="font-size:0.8rem; color:rgba(255,255,255,0.5);">Monitoring active</div>
-        </div>
+# Sidebar Navigation
+with st.sidebar:
+    st.markdown("""
+    <div style="padding: 1rem 0; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.2rem; color: #fff;">CHRONICLE <span style="font-size:0.7rem; color:#2E5CFF; border:1px solid #2E5CFF; padding: 2px 6px; border-radius:4px; vertical-align: middle;">V3.0</span></h2>
     </div>
     """, unsafe_allow_html=True)
-    st.sidebar.markdown("")
-    if st.sidebar.button("⏸️ Pause Collection", use_container_width=True):
-        if stop_collector():
-            st.sidebar.success("✅ Stopped")
-            st.rerun()
-else:
-    st.sidebar.markdown("""
-    <div class="status-indicator">
-        <div class="status-dot" style="color:#EF4444; box-shadow: 0 0 10px #EF4444;"></div>
-        <div>
-            <div style="font-weight:600; color:white;">System Offline</div>
-            <div style="font-size:0.8rem; color:rgba(255,255,255,0.5);"> monitoring paused</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.sidebar.markdown("")
-    if st.sidebar.button("▶️ Start Collection", use_container_width=True):
-        if start_collector():
-            st.sidebar.success("✅ Started")
-            st.rerun()
-
-st.sidebar.markdown("---")
-
-# Statistics
-st.sidebar.markdown("## 📊 Analytics")
-total_memories = collection.count_documents({})
-
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    st.markdown(f"""
-    <div class="stat-card-compact">
-        <div class="stat-value">{total_memories:,}</div>
-        <div class="stat-label">Memories</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-if total_memories > 0:
-    latest = collection.find_one(sort=[("timestamp", -1)])
-    oldest = collection.find_one(sort=[("timestamp", 1)])
     
-if oldest and latest:
-        days_tracked = (latest['timestamp'] - oldest['timestamp']).days
-        with col2:
-            st.markdown(f"""
-            <div class="stat-card-compact">
-                <div class="stat-value">{days_tracked}</div>
-                <div class="stat-label">Days</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-st.sidebar.markdown("---")
-
-# Date Filter
-st.sidebar.markdown("## 🗓️ Time Filter")
-date_filter = st.sidebar.selectbox(
-    "Period",
-    ["All Time", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Custom"],
-    label_visibility="collapsed"
-)
-
-date_query = {}
-if date_filter == "Today":
-    start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    date_query = {"timestamp": {"$gte": start_of_day}}
-elif date_filter == "Yesterday":
-    start = (datetime.now() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    end = start + timedelta(days=1)
-    date_query = {"timestamp": {"$gte": start, "$lt": end}}
-elif date_filter == "Last 7 Days":
-    date_query = {"timestamp": {"$gte": datetime.now() - timedelta(days=7)}}
-elif date_filter == "Last 30 Days":
-    date_query = {"timestamp": {"$gte": datetime.now() - timedelta(days=30)}}
-elif date_filter == "Custom":
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        start_date = st.date_input("From", datetime.now() - timedelta(days=7))
-    with col2:
-        end_date = st.date_input("To", datetime.now())
-    start_dt = datetime.combine(start_date, datetime.min.time())
-    end_dt = datetime.combine(end_date, datetime.max.time())
-    date_query = {"timestamp": {"$gte": start_dt, "$lte": end_dt}}
-
-# Main Search
-st.markdown('<div class="glass-panel" style="padding: 2rem; margin-bottom: 2rem;">', unsafe_allow_html=True)
-st.markdown("### 🔍 Search Your Digital Past")
-
-query = st.text_input(
-    "search",
-    placeholder="Ask me anything... e.g., 'What was I researching about AI last Tuesday?'",
-    label_visibility="collapsed"
-)
-
-search_mode = st.radio(
-    "Mode",
-    ["⚡ Quick Search", "🤖 AI Search"],
-    horizontal=True,
-    label_visibility="collapsed"
-)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Execute Search
-if query:
-    with st.spinner("🔍 Analyzing memories..."):
-        if search_mode == "⚡ Quick Search":
-            search_query = {"summary": {"$regex": query, "$options": "i"}}
-            search_query.update(date_query)
-            results_list = list(collection.find(search_query, limit=20).sort("timestamp", -1))
-        else:
-            all_memories = list(collection.find(date_query, limit=100).sort("timestamp", -1))
-            if all_memories:
-                memory_context = "\n\n".join([
-                    f"[{i+1}] {mem['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}: {mem['summary'][:200]}"
-                    for i, mem in enumerate(all_memories)
-                ])
-                
-                prompt = f"""Search query: "{query}"
-
-Activities:
-{memory_context}
-
-Return relevant entry numbers (comma-separated) or NONE."""
-                
-                try:
-                    response = client_ai.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=prompt
-                    )
-                    text = response.text.strip()
-                    if text != "NONE":
-                        indices = [int(x.strip())-1 for x in text.split(",") if x.strip().isdigit()]
-                        results_list = [all_memories[i] for i in indices if i < len(all_memories)]
-                    else:
-                        results_list = []
-                except Exception as e:
-                    if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                        st.error("⚠️ API limit reached. Use Quick Search!")
-                    else:
-                        st.error(f"Error: {e}")
-                    results_list = []
-            else:
-                results_list = []
+    page = st.radio(
+        "Navigation",
+        ["Command Center", "Memory Grid", "Intelligence"],
+        label_visibility="collapsed"
+    )
     
-    if results_list:
-        st.success(f"✨ Found {len(results_list)} memories")
-        st.markdown("")
-        
-        for idx, mem in enumerate(results_list):
-            time_diff = datetime.utcnow() - mem['timestamp']
-            if time_diff.days > 0:
-                time_ago = f"{time_diff.days}d ago"
-            else:
-                hours = time_diff.seconds // 3600
-                time_ago = f"{hours}h ago" if hours > 0 else f"{time_diff.seconds // 60}m ago"
-            
-            st.markdown(f"""
-            <div class="memory-card">
-                <div class="memory-header">
-                    <span class="memory-time">{mem['timestamp'].strftime('%H:%M')}</span>
-                    <span class="memory-ago">{time_ago}</span>
-                </div>
-                <div class="memory-content">{mem['summary']}</div>
+    st.markdown("---")
+    
+    # System Controls in Sidebar
+    collector_active = is_collector_running()
+    
+    if collector_active:
+        st.markdown("""
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <div class="status-dot dot-green"></div>
+            <div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: #10B981;">SYSTEM ACTIVE</div>
+                <div style="font-size: 0.7rem; color: #94A3B8;">Collector running</div>
             </div>
-            """, unsafe_allow_html=True)
-            
-            if os.path.exists(mem['image_path']):
-                with st.expander("🖼️ Screenshot"):
-                    st.image(mem['image_path'], use_container_width=True)
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("TERMINATE PROCESS", use_container_width=True):
+            stop_collector()
+            st.rerun()
     else:
-        st.warning("😕 No matches found")
-
-# Timeline
-st.sidebar.markdown("---")
-if st.sidebar.checkbox("📈 Timeline"):
-    st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-    st.markdown("## 📈 Activity Timeline")
-    
-    memories = list(collection.find(date_query).sort("timestamp", -1).limit(50))
-    if memories:
-        current_date = None
-        for mem in memories:
-            mem_date = mem['timestamp'].strftime('%Y-%m-%d')
-            if mem_date != current_date:
-                current_date = mem_date
-                st.markdown(f"### 📅 {mem['timestamp'].strftime('%A, %b %d')}")
-            
-            st.markdown(f"""
-            <div class="timeline-item-glass">
-                <strong>{mem['timestamp'].strftime('%I:%M %p')}</strong><br>
-                {mem['summary'][:150]}{'...' if len(mem['summary']) > 150 else ''}
+        st.markdown("""
+        <div style="background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.3); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <div class="status-dot dot-grey"></div>
+            <div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: #94A3B8;">SYSTEM DORMANT</div>
+                <div style="font-size: 0.7rem; color: #64748B;">Collector inactive</div>
             </div>
-            """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("INITIATE SCAN", use_container_width=True):
+            start_collector()
+            st.rerun()
+
+# Top Header (Appears on all pages)
+col_head_1, col_head_2, col_head_3 = st.columns([2, 1, 1])
+with col_head_1:
+    # Page Title injection
+    page_title_map = {
+        "Command Center": "COMMAND CENTER",
+        "Memory Grid": "MEMORY ARCHIVE",
+        "Intelligence": "TEMPORAL INTELLIGENCE"
+    }
+    st.markdown(f"<h1 style='margin:0; font-size:1.8rem;'>{page_title_map[page]}</h1>", unsafe_allow_html=True)
+
+with col_head_3:
+    # Status Pill in Header
+    status_text = "ONLINE" if collector_active else "OFFLINE"
+    status_color = "#10B981" if collector_active else "#64748B"
+    st.markdown(f"""
+    <div style="text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 100%;">
+        <span style="font-family: 'JetBrains Mono'; font-size: 0.8rem; color: {status_color};">● API {status_text}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin-top: 10px; margin-bottom: 30px;'>", unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
+# PAGE: COMMAND CENTER
+# -----------------------------------------------------------------------------
+if page == "Command Center":
+    # Stats Row
+    total_memories = collection.count_documents({})
+    last_memory = collection.find_one(sort=[("timestamp", -1)])
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="dashboard-card">
+            <div class="card-label">
+                <span style="font-size:1.2rem;">📚</span> MEMORY DENSITY
+            </div>
+            <div class="card-value data-font">{total_memories:,}<span style="font-size:1rem; color:#94A3B8;"> pts</span></div>
+            <div class="card-sub">Total Indexed Moments</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col2:
+        status_disp = "Active" if collector_active else "Offline"
+        status_col = "#10B981" if collector_active else "#EF4444"
+        st.markdown(f"""
+        <div class="dashboard-card">
+            <div class="card-label">
+                <span style="font-size:1.2rem;">⚡</span> SESSION HEALTH
+            </div>
+            <div class="card-value" style="color: {status_col}">{status_disp}</div>
+            <div class="card-sub">Collector Process Status</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col3:
+        if last_memory:
+            time_diff = datetime.utcnow() - last_memory['timestamp']
+            if time_diff.seconds < 60:
+                time_str = "Just now"
+            elif time_diff.seconds < 3600:
+                time_str = f"{time_diff.seconds // 60}m ago"
+            else:
+                time_str =f"{time_diff.seconds // 3600}h ago"
+        else:
+            time_str = "N/A"
+            
+        st.markdown(f"""
+        <div class="dashboard-card">
+            <div class="card-label">
+                <span style="font-size:1.2rem;">🕒</span> RECENT ACTIVITY
+            </div>
+            <div class="card-value data-font">{time_str}</div>
+            <div class="card-sub">Last Data Ingestion</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("### ⚡ RECENT CAPTURE STREAM")
+    
+    if last_memory and os.path.exists(last_memory.get('image_path', '')):
+        # Display the image in a styled container
+        st.markdown(f"""
+        <div style="background: #0F0F16; border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; margin-top: 10px;">
+            <div style="margin-bottom: 10px; font-family:'JetBrains Mono'; font-size: 0.8rem; color: #94A3B8;">
+                CAPTURE_ID: {str(last_memory['_id'])[-6:]} | TIMESTAMP: {last_memory['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.image(last_memory['image_path'], use_container_width=True)
+        st.caption(last_memory['summary'])
+    else:
+        st.markdown("""
+        <div class="dashboard-card" style="height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-style: dashed;">
+            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;">🖥️</div>
+            <div style="color: #64748B; font-weight: 600;">AWAITING FIRST SIGNAL</div>
+            <div style="color: #475569; font-size: 0.9rem;">No capture data available in stream</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# PAGE: MEMORY GRID
+# -----------------------------------------------------------------------------
+elif page == "Memory Grid":
+    # Filter Controls
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.markdown("##### Filter Archive")
+    
+    # Simple Date Filter
+    filter_opt = st.selectbox(
+        "Time Range",
+        ["All Time", "Today", "Yesterday", "Last 7 Days"],
+        label_visibility="collapsed"
+    )
+    
+    q = {}
+    if filter_opt == "Today":
+        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        q = {"timestamp": {"$gte": start}}
+    elif filter_opt == "Yesterday":
+        start = (datetime.now() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        q = {"timestamp": {"$gte": start, "$lt": end}}
+    elif filter_opt == "Last 7 Days":
+        q = {"timestamp": {"$gte": datetime.now() - timedelta(days=7)}}
+        
+    memories = list(collection.find(q).sort("timestamp", -1).limit(50))
+    
+    if not memories:
+        st.info("No memories found for this period.")
+    
+    for mem in memories:
+        img_path = mem.get('image_path', '')
+        has_img = os.path.exists(img_path)
+        
+        st.markdown(f"""
+        <div class="timeline-row">
+            <div style="min-width: 80px;">
+                <div class="time-badge">{mem['timestamp'].strftime('%H:%M')}</div>
+            </div>
+            <div style="flex-grow: 1;">
+                <div style="color: #E2E8F0; font-size: 1rem; line-height: 1.5; margin-bottom: 8px;">
+                    {mem['summary']}
+                </div>
+                <div style="font-size: 0.8rem; color: #64748B; font-family: 'JetBrains Mono';">
+                    ID: {str(mem['_id'])}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Streamlit Image Expander
+        if has_img:
+            with st.expander("📸 View Capture", expanded=False):
+                st.image(img_path, use_container_width=True)
+
+# -----------------------------------------------------------------------------
+# PAGE: INTELLIGENCE
+# -----------------------------------------------------------------------------
+elif page == "Intelligence":
+    # Center Layout
+    st.markdown("""
+    <div style="text-align: center; padding: 4rem 0;">
+        <div style="font-size: 4rem; margin-bottom: 1rem; animation: float 6s ease-in-out infinite;">🧠</div>
+        <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #fff, #94A3B8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Temporal Intelligence</h2>
+        <p style="color: #94A3B8; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+            Ask me anything about your recorded history. I can recall screen context, activities, and specific details.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Search Bar
+    query = st.text_input("Ask Chronicle...", placeholder="What was I working on yesterday afternoon?", label_visibility="collapsed")
+    
+    # Suggestions
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("""
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 0.9rem; color: #cbd5e1; text-align: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+            "Summarize my work today"
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown("""
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 0.9rem; color: #cbd5e1; text-align: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+            "Did I visit any news sites?"
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown("---")
+    
+    if query:
+        with st.spinner("Accessing Neural Archives..."):
+             # Simple context retrieval logic
+             relevant_docs = list(collection.find({"summary": {"$regex": query, "$options": "i"}}).sort("timestamp", -1).limit(10))
+             
+             if not relevant_docs:
+                 # Fallback to general AI chat if no kw match, or just use recent
+                 relevant_docs = list(collection.find().sort("timestamp", -1).limit(20))
+             
+             context = "\n".join([f"[{d['timestamp']}] {d['summary']}" for d in relevant_docs])
+             
+             prompt = f"""User Query: {query}
+             
+             Context from my screen history:
+             {context}
+             
+             Answer functionality based on the context provided."""
+             
+             try:
+                response = client_ai.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt
+                )
+                
+                st.markdown(f"""
+                <div style="background: #0F0F16; border: 1px solid #2E5CFF; border-radius: 12px; padding: 20px; margin-top: 20px;">
+                    <div style="display: flex; align-items: start; gap: 12px;">
+                        <div style="font-size: 1.5rem;">🤖</div>
+                        <div style="line-height: 1.6; color: #E2E8F0;">
+                            {response.text}
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+             except Exception as e:
+                 st.error(f"Intelligence Module Error: {e}")
