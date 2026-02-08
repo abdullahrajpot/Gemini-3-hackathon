@@ -1,0 +1,14 @@
+storage/
+collector.py
+*.bat
+*.log
+venv/
+__pycache__/
+.git/
+.env
+site-packages/
+collector_debug.txt
+install_autostart.py
+stop_collector.py
+test_imports.py
+check_models.py

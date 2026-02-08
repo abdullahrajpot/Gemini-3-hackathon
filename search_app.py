@@ -319,7 +319,22 @@ st.markdown("""
 # LOGIC
 # -----------------------------------------------------------------------------
 
+import sys
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+# ... (rest of imports)
+
+# -----------------------------------------------------------------------------
+# LOGIC
+# -----------------------------------------------------------------------------
+
 def is_collector_running():
+    if psutil is None:
+        return False
+        
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
             cmdline = proc.info.get('cmdline', [])
@@ -330,6 +345,10 @@ def is_collector_running():
     return False
 
 def start_collector():
+    if psutil is None:
+        st.error("Collector cannot be started in this environment (missing psutil).")
+        return False
+        
     try:
         if sys.platform == "win32":
             pythonw = sys.executable.replace("python.exe", "pythonw.exe")
@@ -340,14 +359,18 @@ def start_collector():
             subprocess.Popen([pythonw, collector_path], startupinfo=startupinfo,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.Popen(["nohup", sys.executable, "collector.py", "&"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # On Vercel/Linux, we likely can't start persistent background processes easily like this
+            st.error("Collector starting not supported on this platform/environment.")
+            return False
         return True
     except Exception as e:
         st.error(f"Error: {e}")
         return False
 
 def stop_collector():
+    if psutil is None:
+        return False
+        
     try:
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
