@@ -177,21 +177,25 @@ def save_memory():
             logging.warning(f"OCR check failed: {e}")
         
         # 2. Analyze with Gemini Vision
+        analysis_text = "Analysis pending/skipped"
         try:
             uploaded_file = client_ai.files.upload(file=img_path)
             logging.info("Image uploaded to Gemini.")
             
+            prompt = "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible."
             response = client_ai.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=[
-                    "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible.",
-                    uploaded_file
-                ]
+                contents=[prompt, uploaded_file]
             )
             logging.info("Gemini analysis complete.")
+            analysis_text = response.text
         except Exception as e:
-            logging.error(f"Gemini API Error: {e}")
-            return
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                logging.warning(f"Gemini Query/Quota Limit Exceeded. Skipping analysis for this capture. Error: {e}")
+                analysis_text = "Analysis skipped due to API quota limits."
+            else:
+                logging.error(f"Gemini API Error: {e}")
+                analysis_text = "Analysis failed."
         
         # 3. Store in MongoDB
         try:
@@ -205,7 +209,7 @@ def save_memory():
             
             memory = {
                 "timestamp": datetime.utcnow(),
-                "summary": response.text,
+                "summary": analysis_text,
                 "image_path": img_path,
                 "image_data": img_str, # Store base64 data
                 "captured_at": timestamp,
