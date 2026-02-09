@@ -179,10 +179,12 @@ def save_memory():
         # 2. Analyze with Gemini Vision
         analysis_text = "Analysis pending/skipped"
         try:
+            logging.info("Attempting to upload file to Gemini...")
             uploaded_file = client_ai.files.upload(file=img_path)
-            logging.info("Image uploaded to Gemini.")
+            logging.info(f"Image uploaded to Gemini. URI: {uploaded_file.uri}")
             
             prompt = "Describe this screen activity in detail. Include: apps open, what the user is doing, and any important text visible."
+            logging.info("Sending prompt to Gemini model...")
             response = client_ai.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=[prompt, uploaded_file]
@@ -191,10 +193,10 @@ def save_memory():
             analysis_text = response.text
         except Exception as e:
             if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                logging.warning(f"Gemini Query/Quota Limit Exceeded. Skipping analysis for this capture. Error: {e}")
+                logging.warning(f"Gemini Query/Quota Limit Exceeded. Skipping analysis. Error: {e}")
                 analysis_text = "Analysis skipped due to API quota limits."
             else:
-                logging.error(f"Gemini API Error: {e}")
+                logging.error(f"Gemini API Error (Analysis Step): {e}")
                 analysis_text = "Analysis failed."
         
         # 3. Store in MongoDB
